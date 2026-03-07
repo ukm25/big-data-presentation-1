@@ -189,7 +189,7 @@ left = excellent.merge(schol, on="race", how="left")`
   Trống (NULL): 106 học sinh (group D, E)`
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="space-y-10 flex flex-col">
         <div className="grid grid-cols-2 gap-6">
           <MiniSnippet title="Join Logic" code={`full = demo.merge(\n  scores, \n  on="student_id"\n)`} color="indigo" />
@@ -260,7 +260,7 @@ df["grade"]     = df["avg_score"].apply(get_grade)`
   Strong in Math            : 86 em`
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="space-y-10 flex flex-col">
         <div className="grid grid-cols-2 gap-6">
           <MiniSnippet title="Grade UDF" code={`if avg >= 90: \n  return "Xuat Sac"\nif avg >= 80: \n  return "Gioi"`} color="emerald" />
@@ -314,7 +314,7 @@ raw = pd.read_csv("StudentsPerformance.csv")
   Filter (math >= 0) -> 1000 records (CHÍNH XÁC)`
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="space-y-8 flex flex-col">
         <div className="grid grid-cols-1 gap-6">
           <MiniSnippet title="Type Fix" code={`# Correct assignment\nrace: chararray`} color="rose" />
@@ -374,7 +374,7 @@ replicated_join = large_data.merge(small_lookup, on="race")`
   Replicated Speed  : 1.4 ms (19.3x improvement)`
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="space-y-8 flex flex-col">
         <div className="grid grid-cols-2 gap-6">
           <MiniSnippet title="Pruning" code={`data[[\n  "id", \n  "math"\n]]`} color="emerald" />
@@ -438,7 +438,7 @@ male       80     88.46                 40
 Pipeline Execution Time: 13.03 ms`
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="flex flex-col space-y-10">
         <div className="grid grid-cols-2 gap-6">
           <MiniSnippet title="Pipeline" code={`STAGE_1 -> \nSTAGE_2 -> \nSTAGE_3 -> \nSTAGE_4`} color="rose" />
@@ -485,6 +485,7 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [showSidebar, setShowSidebar] = useState(false)
 
   useEffect(() => {
     const loader = async () => {
@@ -526,13 +527,22 @@ export default function App() {
     setView({ type, id })
     setSearch('')
     setPage(1)
+    setShowSidebar(false)
   }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-800 antialiased overflow-hidden">
 
+      {/* Sidebar Overlay (Mobile) */}
+      {showSidebar && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 shadow-sm z-20 shrink-0 overflow-hidden">
+      <aside className={`fixed lg:sticky top-0 left-0 z-50 w-80 bg-white border-r border-slate-200 flex flex-col h-screen transform transition-transform duration-500 ease-in-out lg:translate-x-0 ${showSidebar ? 'translate-x-0' : '-translate-x-full'} shadow-2xl lg:shadow-sm shrink-0 overflow-hidden`}>
         <div className="p-10 pb-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-indigo-600 rounded-[20px] flex items-center justify-center text-white text-2xl font-black shadow-2xl shadow-indigo-100 ring-8 ring-indigo-50">
@@ -600,47 +610,64 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
 
-        {/* Header */}
-        <header className="h-32 bg-white/60 backdrop-blur-3xl border-b border-slate-200 px-16 flex items-center justify-between shrink-0 sticky top-0 z-10">
-          <div className="flex items-center gap-8">
-            <div className={`w-20 h-20 rounded-[32px] flex items-center justify-center text-white shadow-2xl transition-all duration-1000 transform group-hover:rotate-6 ${view.type === 'demo' ? 'bg-indigo-600' : 'bg-slate-900 border-4 border-slate-800'
+        {/* Mobile Header */}
+        <div className="lg:hidden h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-30">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-black">P</div>
+            <span className="font-black tracking-tighter">Pig Lab</span>
+          </div>
+          <button
+            onClick={() => setShowSidebar(!showSidebar)}
+            className="p-3 hover:bg-slate-100 rounded-xl transition-colors"
+          >
+            <Layers size={24} className="text-indigo-600" />
+          </button>
+        </div>
+
+        {/* Header (Desktop-ish) */}
+        <header className="h-24 lg:h-32 bg-white/60 backdrop-blur-3xl border-b border-slate-200 px-6 lg:px-16 flex flex-col lg:flex-row items-start lg:items-center justify-between shrink-0 sticky top-0 z-10 py-4 lg:py-0 overflow-hidden">
+          <div className="flex items-center gap-4 lg:gap-8">
+            <div className={`w-12 h-12 lg:w-20 lg:h-20 rounded-2xl lg:rounded-[32px] flex items-center justify-center text-white shadow-2xl transition-all duration-1000 transform ${view.type === 'demo' ? 'bg-indigo-600' : 'bg-slate-900 border-4 border-slate-800'
               }`}>
-              {view.type === 'demo' ? <PlayCircle size={36} /> : <Database size={36} />}
+              {view.type === 'demo' ? <PlayCircle size={24} className="lg:hidden" /> : <Database size={24} className="lg:hidden" />}
+              <div className="hidden lg:block">
+                {view.type === 'demo' ? <PlayCircle size={36} /> : <Database size={36} />}
+              </div>
             </div>
             <div>
-              <h2 className="text-[34px] font-black text-slate-900 tracking-tighter leading-none mb-3">
+              <h2 className="text-[20px] lg:text-[34px] font-black text-slate-900 tracking-tighter leading-none mb-1 lg:mb-3">
                 {view.type === 'demo' ? currentDemo?.name : currentSource.name}
               </h2>
-              <div className="flex items-center gap-3">
-                <div className="px-3 py-1 bg-white border border-slate-200 rounded-xl shadow-sm">
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.25em] leading-none">
+              <div className="flex items-center gap-2 lg:gap-3">
+                <div className="px-2 lg:px-3 py-0.5 lg:py-1 bg-white border border-slate-200 rounded-lg lg:rounded-xl shadow-sm">
+                  <p className="text-[8px] lg:text-[11px] font-black text-slate-400 uppercase tracking-[0.25em] leading-none">
                     {view.type === 'demo' ? 'Logic Masterclass' : `Data View`}
                   </p>
                 </div>
-                <div className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-                <p className="text-[13px] font-bold text-slate-400 tracking-tight">Enterprise Scale Visualization Platform</p>
+                <div className="hidden lg:block h-1.5 w-1.5 rounded-full bg-slate-300" />
+                <p className="hidden lg:block text-[13px] font-bold text-slate-400 tracking-tight">Enterprise Scale Visualization Platform</p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4 lg:gap-8 mt-4 lg:mt-0 w-full lg:w-auto">
             {view.type === 'table' && (
-              <div className="flex items-center gap-4 bg-white p-2 rounded-[32px] border border-slate-200 shadow-2xl shadow-slate-200/50">
-                <div className="relative">
-                  <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300">
-                    <Search size={20} />
+              <div className="flex items-center gap-2 lg:gap-4 bg-white p-1.5 lg:p-2 rounded-2xl lg:rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/50 w-full lg:w-auto">
+                <div className="relative flex-1 lg:flex-none">
+                  <span className="absolute left-4 lg:left-6 top-1/2 -translate-y-1/2 text-slate-300">
+                    <Search size={16} className="lg:size-[20px]" />
                   </span>
                   <input
                     type="text"
                     placeholder="Quick search..."
-                    className="pl-14 pr-8 py-4 bg-transparent border-none text-[15px] w-80 focus:ring-0 transition-all outline-none font-bold text-slate-800 placeholder:text-slate-300"
+                    className="pl-10 lg:pl-14 pr-4 lg:pr-8 py-2 lg:py-4 bg-transparent border-none text-[13px] lg:text-[15px] w-full lg:w-80 focus:ring-0 transition-all outline-none font-bold text-slate-800 placeholder:text-slate-300"
                     value={search}
                     onChange={e => { setSearch(e.target.value); setPage(1) }}
                   />
                 </div>
-                <div className="h-12 w-px bg-slate-100 mx-2" />
+                <div className="h-8 lg:h-12 w-px bg-slate-100 mx-1 lg:mx-2" />
                 <select
-                  className="bg-slate-50 border-none rounded-2xl px-6 py-3 text-[11px] font-black text-slate-900 outline-none pr-10 cursor-pointer uppercase tracking-widest"
+                  className="bg-slate-50 border-none rounded-xl lg:rounded-2xl px-3 lg:px-6 py-2 lg:py-3 text-[9px] lg:text-[11px] font-black text-slate-900 outline-none pr-8 cursor-pointer uppercase tracking-widest shrink-0"
                   value={pageSize}
                   onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
                 >
@@ -652,7 +679,7 @@ export default function App() {
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-auto p-16 custom-scrollbar transition-all duration-[1500ms]">
+        <div className="flex-1 overflow-auto p-4 lg:p-16 custom-scrollbar transition-all duration-[1500ms]">
 
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full gap-10">
@@ -663,7 +690,7 @@ export default function App() {
               <p className="text-[13px] font-black uppercase tracking-[0.6em] text-slate-300 animate-pulse">Syncing Distributed Node...</p>
             </div>
           ) : (
-            <div className="max-w-[1700px] mx-auto space-y-20 animate-in fade-in slide-in-from-bottom-12 duration-[1500ms]">
+            <div className="max-w-[1700px] mx-auto space-y-12 lg:space-y-20 animate-in fade-in slide-in-from-bottom-12 duration-[1500ms]">
 
               {/* DEMO DISPLAY */}
               {view.type === 'demo' && (
@@ -678,14 +705,14 @@ export default function App() {
 
               {/* DATA TABLE DISPLAY */}
               {view.type === 'table' && (
-                <div className="bg-white border-2 border-slate-100 rounded-[56px] shadow-[0_40px_100px_-20px_rgba(15,23,42,0.15)] overflow-hidden flex flex-col transition-all duration-1000">
+                <div className="bg-white border border-slate-100 rounded-[32px] lg:rounded-[56px] shadow-[0_40px_100px_-20px_rgba(15,23,42,0.15)] overflow-hidden flex flex-col transition-all duration-1000">
 
                   <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50/50 border-b-2 border-slate-100">
                           {columns.map(col => (
-                            <th key={col} className="px-12 py-10 text-[12px] font-black text-slate-400 uppercase tracking-[0.35em] whitespace-nowrap">
+                            <th key={col} className="px-6 lg:px-12 py-6 lg:py-10 text-[10px] lg:text-[12px] font-black text-slate-400 uppercase tracking-[0.35em] whitespace-nowrap">
                               {col.replace(/_/g, ' ')}
                             </th>
                           ))}
@@ -694,8 +721,8 @@ export default function App() {
                       <tbody className="divide-y divide-slate-100">
                         {pagedData.length === 0 ? (
                           <tr>
-                            <td colSpan={columns.length} className="px-12 py-64 text-center">
-                              <p className="text-2xl font-black text-slate-100 uppercase tracking-[0.8em] animate-pulse">Empty Data Cluster</p>
+                            <td colSpan={columns.length} className="px-6 lg:px-12 py-32 lg:py-64 text-center">
+                              <p className="text-xl lg:text-2xl font-black text-slate-100 uppercase tracking-[0.8em] animate-pulse">Empty Data Cluster</p>
                             </td>
                           </tr>
                         ) : (
@@ -704,16 +731,16 @@ export default function App() {
                               {columns.map(col => {
                                 const val = row[col]
                                 return (
-                                  <td key={col} className="px-12 py-8 text-[15px] align-middle whitespace-nowrap">
+                                  <td key={col} className="px-6 lg:px-12 py-4 lg:py-8 text-[13px] lg:text-[15px] align-middle whitespace-nowrap">
                                     {col === 'gender' ? <Badge type="gender">{val}</Badge> :
                                       col === 'test_prep' || col === 'test preparation course' ? <Badge type="test">{val}</Badge> :
                                         typeof val === 'number' && ['math', 'reading', 'writing', 'avg_score'].includes(col.toLowerCase()) ? (
-                                          <div className="flex items-center gap-6">
-                                            <div className="flex-1 w-28 h-3.5 bg-slate-100 rounded-full overflow-hidden shadow-inner ring-4 ring-slate-50 relative group/bar">
+                                          <div className="flex items-center gap-3 lg:gap-6">
+                                            <div className="flex-1 w-20 lg:w-28 h-2.5 lg:h-3.5 bg-slate-100 rounded-full overflow-hidden shadow-inner ring-4 ring-slate-50 relative group/bar">
                                               <div className={`h-full transition-all duration-[2000ms] ease-out delay-${idx * 5} ${val >= 80 ? 'bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.5)]' : val >= 60 ? 'bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]'}`}
                                                 style={{ width: `${val}%` }} />
                                             </div>
-                                            <span className="text-sm font-black text-slate-800 w-10">{val}</span>
+                                            <span className="text-xs lg:text-sm font-black text-slate-800 w-8 lg:w-10">{val}</span>
                                           </div>
                                         ) :
                                           <span className="text-slate-900 font-bold opacity-50 group-hover:opacity-100 transition-opacity duration-500">{val ?? '—'}</span>
@@ -729,32 +756,32 @@ export default function App() {
                   </div>
 
                   {/* High Quality Pagination */}
-                  <div className="px-16 py-12 bg-slate-50/80 border-t-2 border-slate-100 flex items-center justify-between shrink-0">
+                  <div className="px-6 lg:px-16 py-8 lg:py-12 bg-slate-50/80 border-t-2 border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-6 shrink-0">
                     <div className="flex items-center gap-6">
-                      <div className="h-12 w-12 bg-indigo-600 rounded-[18px] flex items-center justify-center font-black text-lg text-white shadow-2xl shadow-indigo-300 ring-8 ring-white">{page}</div>
-                      <span className="text-[12px] font-black text-slate-400 uppercase tracking-[0.4em]">Index <span className="text-slate-900 mx-2">/</span> {totalPages || 1}</span>
+                      <div className="h-10 w-10 lg:h-12 lg:w-12 bg-indigo-600 rounded-xl lg:rounded-[18px] flex items-center justify-center font-black text-md lg:text-lg text-white shadow-2xl shadow-indigo-300 ring-4 lg:ring-8 ring-white">{page}</div>
+                      <span className="text-[10px] lg:text-[12px] font-black text-slate-400 uppercase tracking-[0.4em]">Index <span className="text-slate-900 mx-2">/</span> {totalPages || 1}</span>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 lg:gap-4 scale-90 lg:scale-100">
                       <button
                         disabled={page === 1}
                         onClick={() => setPage(p => Math.max(1, p - 1))}
-                        className="w-16 h-16 flex items-center justify-center bg-white border border-slate-200 rounded-[28px] disabled:opacity-20 hover:shadow-2xl hover:scale-110 active:scale-95 transition-all text-slate-400 hover:text-indigo-600 shadow-lg shadow-slate-200/50"
+                        className="w-12 h-12 lg:w-16 lg:h-16 flex items-center justify-center bg-white border border-slate-200 rounded-2xl lg:rounded-[28px] disabled:opacity-20 hover:shadow-2xl hover:scale-110 active:scale-95 transition-all text-slate-400 hover:text-indigo-600 shadow-lg shadow-slate-200/50"
                       >
-                        <ChevronLeft size={28} />
+                        <ChevronLeft size={24} className="lg:size-[28px]" />
                       </button>
 
-                      <div className="flex gap-3">
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      <div className="flex gap-2 lg:gap-3">
+                        {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
                           let p = i + 1
-                          if (totalPages > 5 && page > 3) p = page - 3 + i + 1
+                          if (totalPages > 3 && page > 2) p = page - 2 + i + 1
                           if (p > totalPages) return null
                           return (
                             <button
                               key={p}
                               onClick={() => setPage(p)}
-                              className={`w-16 h-16 text-[15px] font-black rounded-[28px] transition-all border-2 ${page === p
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xl shadow-indigo-200 scale-125 z-10 rotate-6'
+                              className={`w-12 h-12 lg:w-16 lg:h-16 text-[13px] lg:text-[15px] font-black rounded-2xl lg:rounded-[28px] transition-all border-2 ${page === p
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xl shadow-indigo-200 scale-110 lg:scale-125 z-10 rotate-6'
                                 : 'bg-white text-slate-400 border-slate-100 hover:border-indigo-300'
                                 }`}
                             >
@@ -767,9 +794,9 @@ export default function App() {
                       <button
                         disabled={page === totalPages || totalPages === 0}
                         onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        className="w-16 h-16 flex items-center justify-center bg-white border border-slate-200 rounded-[28px] disabled:opacity-20 hover:shadow-2xl hover:scale-110 active:scale-95 transition-all text-slate-400 hover:text-indigo-600 shadow-lg shadow-slate-200/50"
+                        className="w-12 h-12 lg:w-16 lg:h-16 flex items-center justify-center bg-white border border-slate-200 rounded-2xl lg:rounded-[28px] disabled:opacity-20 hover:shadow-2xl hover:scale-110 active:scale-95 transition-all text-slate-400 hover:text-indigo-600 shadow-lg shadow-slate-200/50"
                       >
-                        <ChevronRight size={28} />
+                        <ChevronRight size={24} className="lg:size-[28px]" />
                       </button>
                     </div>
                   </div>
