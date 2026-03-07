@@ -5,22 +5,27 @@
    kiểm tra schema, cấu trúc thực thi và mẫu dữ liệu.
 */
 
--- 1. LOAD dữ liệu thô
+-- 1. LOAD dữ liệu nguyên bản (Bao gồm cả dòng header)
+-- [LOI 1]: Header Collision - Dòng đầu tiên (tiêu đề) sẽ bị tính là một bản ghi bị lỗi dữ liệu
+-- [LOI 2]: Type Casting Disaster - Khai báo sai kiểu dữ liệu của cột 'race' thành số nguyên (int)
 raw_data = LOAD '/data/StudentsPerformance.csv' USING PigStorage(',') 
-    AS (id:int, gender:chararray, race:chararray, parent_edu:chararray, lunch:chararray, test_prep:chararray, math:int, reading:int, writing:int);
+    AS (id:int, gender:chararray, race:int, parent_edu:chararray, lunch:chararray, test_prep:chararray, math:int, reading:int, writing:int);
 
--- [DEBUG 1] DESCRIBE: Kiểm tra kiểu dữ liệu của các cột (Schema)
--- Rất hữu ích khi bạn không chắc cột Math là int hay chararray.
+-- [DEBUG 1] DESCRIBE: Kiểm tra kiểu dữ liệu
+-- Lúc này Pig sẽ báo race là int
 DESCRIBE raw_data;
 
--- 2. Xử lý Troubleshooting: Lọc NULL và chuyển đổi giới tính về chữ HOA
-clean_data = FILTER raw_data BY math IS NOT NULL;
-processed = FOREACH clean_data GENERATE id, UPPER(gender) AS gender_upper, math;
+-- [DEBUG 2] DUMP limit để thấy hậu quả của Type Mismatch
+-- Toàn bộ cột race sẽ biến thành rỗng (null) vì chữ không thể ép sang số
+bad_type_sample = LIMIT raw_data 5;
+DUMP bad_type_sample;
 
--- [DEBUG 2] EXPLAIN: Xem kế hoạch thực thi (Logical/Physical/MapReduce Plan)
--- Giúp hiểu cách Pig biến đổi code thành các MapReduce job.
-EXPLAIN processed;
+-- 2. Xử lý Troubleshooting: Boundary Error
+-- [LOI 3]: Lọc mất học sinh có điểm 0 do dùng sai dấu >
+filtered_wrong = FILTER raw_data BY math > 0;
 
--- [DEBUG 3] ILLUSTRATE: Mô phỏng chạy thử trên một tập dữ liệu nhỏ
--- Công cụ mạnh mẽ nhất để thấy dữ liệu biến đổi qua từng dòng code.
-ILLUSTRATE processed;
+-- GROUP và đếm thử dữ liệu để xem tổng số học sinh còn lại
+grouped_wrong = GROUP filtered_wrong ALL;
+count_wrong = FOREACH grouped_wrong GENERATE COUNT(filtered_wrong);
+
+DUMP count_wrong;

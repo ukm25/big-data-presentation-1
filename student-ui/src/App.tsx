@@ -29,6 +29,7 @@ const DEMOS = [
   { id: 'demo3', name: '03. Troubleshooting', icon: AlertTriangle, color: 'text-amber-500' },
   { id: 'demo4', name: '04. Optimization', icon: Zap, color: 'text-emerald-500' },
   { id: 'demo5', name: '05. Full Pipeline', icon: PlayCircle, color: 'text-rose-500' },
+  { id: 'overview', name: 'Executive Overview', icon: Activity, color: 'text-indigo-600' },
 ]
 
 const PAGE_SIZES = [10, 20, 50]
@@ -145,67 +146,329 @@ function Badge({ children, type }: { children: any, type?: 'gender' | 'test' | '
 
 // ─── Demo Sub-Views ──────────────────────────────────────
 
-const Demo01 = ({ dataSources }: any) => {
-  const progA = dataSources.program_a || []
-  const progB = dataSources.program_b || []
-  const unionData = [
-    { name: 'Program A', count: progA.length, fill: '#6366f1' },
-    { name: 'Program B', count: progB.length, fill: '#8b5cf6' },
+const Demo01 = () => {
+  const steps = [
+    {
+      title: "BƯỚC 1: LOAD (Nạp dữ liệu)",
+      desc: "Nạp dữ liệu từ 3 nguồn: Program A, Program B và Scholarships. Định nghĩa Schema chi tiết.",
+      code: "prog_a = LOAD 'data/students_program_A.csv' USING PigStorage(',') \n  AS (id:int, gender:chararray, race:chararray, education:chararray, \n      lunch:chararray, prep:chararray, math:int, read:int, write:int);\nprog_b = LOAD 'data/students_program_B.csv' ...;\nschol  = LOAD 'data/scholarships.csv' ...;",
+      multiTables: [
+        {
+          name: "📁 Source: students_program_A.csv (Top 4 records)",
+          headers: ["ID", "Gender", "Race", "Education", "Math", "Reading", "Writing"],
+          data: [
+            ["615", "female", "group A", "associate's", "82", "93", "93"],
+            ["572", "male", "group A", "bachelor's", "91", "96", "92"],
+            ["703", "male", "group A", "bachelor's", "87", "84", "87"],
+            ["821", "female", "group A", "some high", "85", "90", "92"]
+          ]
+        },
+        {
+          name: "📁 Source: students_program_B.csv (Top 4 records)",
+          headers: ["ID", "Gender", "Race", "Education", "Math", "Reading", "Writing"],
+          data: [
+            ["289", "male", "group B", "bachelor's", "88", "75", "76"],
+            ["145", "female", "group B", "some high", "72", "81", "83"],
+            ["332", "male", "group B", "some college", "65", "70", "68"],
+            ["412", "female", "group B", "master's", "95", "98", "97"]
+          ]
+        },
+        {
+          name: "📁 Source: scholarships.csv (Top 4 records)",
+          headers: ["Race", "Award Name", "Amount ($)"],
+          data: [
+            ["group A", "STEM Award", "5000"],
+            ["group B", "Diversity Grant", "4000"],
+            ["group C", "Merit Scholarship", "4500"],
+            ["group D", "Financial Aid", "3500"]
+          ]
+        }
+      ],
+      color: "indigo"
+    },
+    {
+      title: "BƯỚC 2: UNION (Gộp dữ liệu)",
+      desc: "Hợp nhất các tập dữ liệu có cùng cấu trúc từ nhiều nguồn khác nhau.",
+      code: "all_students = UNION prog_a, prog_b;",
+      multiTables: [
+        {
+          name: "📋 Input: prog_a (Program A — 2 records)",
+          headers: ["ID", "Gender", "Race", "Education", "Math", "Read", "Write"],
+          data: [
+            ["615", "female", "group A", "associate's", "82", "93", "93"],
+            ["572", "male", "group A", "bachelor's", "91", "96", "92"]
+          ]
+        },
+        {
+          name: "📋 Input: prog_b (Program B — 2 records)",
+          headers: ["ID", "Gender", "Race", "Education", "Math", "Read", "Write"],
+          data: [
+            ["289", "male", "group B", "bachelor's", "88", "75", "76"],
+            ["412", "female", "group B", "master's", "95", "98", "97"]
+          ]
+        },
+        {
+          name: "✅ Output: all_students = UNION(prog_a ∪ prog_b)",
+          headers: ["ID", "Gender", "Race", "Education", "Math", "Read", "Write", "Source"],
+          data: [
+            ["615", "female", "group A", "associate's", "82", "93", "93", "prog_a"],
+            ["572", "male", "group A", "bachelor's", "91", "96", "92", "prog_a"],
+            ["289", "male", "group B", "bachelor's", "88", "75", "76", "prog_b"],
+            ["412", "female", "group B", "master's", "95", "98", "97", "prog_b"]
+          ]
+        }
+      ],
+      color: "emerald"
+    },
+    {
+      title: "BƯỚC 3: SPLIT (Phân luồng)",
+      desc: "Tách một tập dữ liệu lớn thành nhiều luồng xử lý riêng biệt dựa trên điều kiện.",
+      code: "SPLIT all_students INTO\n  excellent   IF math >= 80,\n  good        IF (math >= 60 AND math < 80),\n  needs_help  IF math < 60;",
+      multiTables: [
+        {
+          name: "🟢 Stream: excellent (math ≥ 80) — 198 records",
+          headers: ["ID", "Gender", "Race", "Math", "Read", "Write"],
+          data: [
+            ["615", "female", "group A", "82", "93", "93"],
+            ["572", "male", "group A", "91", "96", "92"],
+            ["412", "female", "group B", "95", "98", "97"]
+          ]
+        },
+        {
+          name: "🟡 Stream: good (math 60–79) — 510 records",
+          headers: ["ID", "Gender", "Race", "Math", "Read", "Write"],
+          data: [
+            ["145", "female", "group B", "72", "81", "83"],
+            ["703", "male", "group A", "65", "70", "68"],
+            ["821", "female", "group A", "75", "80", "78"]
+          ]
+        },
+        {
+          name: "🔴 Stream: needs_help (math < 60) — 292 records",
+          headers: ["ID", "Gender", "Race", "Math", "Read", "Write"],
+          data: [
+            ["332", "male", "group B", "58", "62", "55"],
+            ["201", "female", "group C", "45", "50", "48"],
+            ["105", "male", "group D", "52", "60", "57"]
+          ]
+        },
+        {
+          name: "📊 Result Summary — all_students split into 3 streams",
+          headers: ["Stream Name", "Condition", "Record Count", "Percentage"],
+          data: [
+            ["excellent", "math >= 80", "198", "19.8%"],
+            ["good", "math 60–79", "510", "51.0%"],
+            ["needs_help", "math < 60", "292", "29.2%"]
+          ]
+        }
+      ],
+      color: "amber"
+    },
+    {
+      title: "BƯỚC 4: JOIN (Kết hợp)",
+      desc: "Nối dữ liệu học sinh với bảng học bổng bằng cột Race/Ethnicity (Multi-Dataset Join).",
+      code: "enriched = JOIN all_students BY race, schol BY race;",
+      multiTables: [
+        {
+          name: "📋 Input: all_students (sample — joined by race)",
+          headers: ["ID", "Gender", "Race", "Math", "Read", "Write"],
+          data: [
+            ["615", "female", "group A", "82", "93", "93"],
+            ["572", "male", "group A", "91", "96", "92"],
+            ["289", "male", "group B", "88", "75", "76"],
+            ["412", "female", "group B", "95", "98", "97"]
+          ]
+        },
+        {
+          name: "📋 Input: schol — scholarships.csv (joined by race)",
+          headers: ["Race", "Scholarship Name", "Amount ($)"],
+          data: [
+            ["group A", "STEM Award", "5000"],
+            ["group B", "Diversity Grant", "4000"],
+            ["group C", "Merit Scholarship", "4500"],
+            ["group D", "Financial Aid", "3500"]
+          ]
+        },
+        {
+          name: "✅ Output: enriched = JOIN all_students BY race, schol BY race",
+          headers: ["ID", "Gender", "Race", "Math", "Read", "Write", "Scholarship", "Amount ($)"],
+          data: [
+            ["615", "female", "group A", "82", "93", "93", "STEM Award", "5000"],
+            ["572", "male", "group A", "91", "96", "92", "STEM Award", "5000"],
+            ["289", "male", "group B", "88", "75", "76", "Diversity Grant", "4000"],
+            ["412", "female", "group B", "95", "98", "97", "Diversity Grant", "4000"]
+          ]
+        }
+      ],
+      color: "rose"
+    },
+    {
+      title: "BƯỚC 5: TRÌNH DIỄN KẾT QUẢ",
+      desc: "Kiểm tra Schema và xuất dữ liệu của high_achievers (học sinh có math ≥ 80) ra màn hình.",
+      code: "-- Mô tả cấu trúc schema của all_students\nDESCRIBE all_students;\n\n-- Xuất dữ liệu high_achievers ra màn hình\nDUMP high_achievers;",
+      multiTables: [
+        {
+          name: "📐 DESCRIBE all_students — Schema Output",
+          headers: ["Field", "Type", "Description"],
+          data: [
+            ["id", "int", "Student ID"],
+            ["gender", "chararray", "Male / Female"],
+            ["race", "chararray", "Race / Ethnicity group"],
+            ["parent_edu", "chararray", "Parent education level"],
+            ["lunch", "chararray", "Standard or free/reduced"],
+            ["test_prep", "chararray", "Completed or none"],
+            ["math", "int", "Math score (0–100)"],
+            ["reading", "int", "Reading score (0–100)"],
+            ["writing", "int", "Writing score (0–100)"]
+          ]
+        },
+        {
+          name: "📤 DUMP high_achievers — Students with math ≥ 80",
+          headers: ["ID", "Gender", "Race", "Math", "Reading", "Writing"],
+          data: [
+            ["615", "female", "group A", "82", "93", "93"],
+            ["572", "male", "group A", "91", "96", "92"],
+            ["412", "female", "group B", "95", "98", "97"],
+            ["703", "male", "group A", "87", "84", "87"],
+            ["821", "female", "group A", "85", "90", "92"]
+          ]
+        }
+      ],
+      color: "violet"
+    }
   ]
 
-  const code = `-- 1. LOAD: Nạp dữ liệu đa nguồn
-prog_a = LOAD 'data/program_a.csv' USING PigStorage(',');
-prog_b = LOAD 'data/program_b.csv' USING PigStorage(',');
-schol  = LOAD 'data/scholarships.csv' USING PigStorage(',');
-
--- 2. UNION: Gộp danh sách học sinh
-all_students = UNION prog_a, prog_b;
-
--- 3. SPLIT: Phân nhóm học tập
-SPLIT all_students INTO 
-    excellent  IF math >= 80,
-    good       IF (math >= 60 AND math < 80),
-    needs_help IF math < 60;
-
--- 4. JOIN: Kết hợp với học bổng
-full_data = JOIN all_students BY race, schol BY race;`
-
-  const output = `[1] UNION 
-  Sau UNION: 1000 dòng học sinh
-
-[2] SPLIT Thống kê:
-  Excellent  (>=80):  198 (19.8%)
-  Good       (60-79):  510 (51.0%)
-  Needs Help (<60) :  292 (29.2%)
-
-[3] JOIN Results:
-  demographics + scores -> 1000 dòng, 9 cột
-
-[4] LEFT OUTER JOIN (Học bổng):
-  Có học bổng: 87 học sinh
-  Trống (NULL): 106 học sinh (group D, E)`
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
-      <div className="space-y-10 flex flex-col">
-        <div className="grid grid-cols-2 gap-6">
-          <MiniSnippet title="Join Logic" code={`full = JOIN demo BY id,\n  scores BY student_id;`} color="indigo" />
-          <MiniSnippet title="Union Logic" code={`all_students = \n  UNION prog_a, prog_b;`} color="emerald" />
+    <div className="space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+      <div className="flex flex-col lg:flex-row items-center justify-between gap-10 bg-indigo-600 rounded-[40px] p-12 text-white shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 blur-[100px] rounded-full -mr-20 -mt-20" />
+        <div className="relative z-10 max-w-2xl">
+          <p className="text-[12px] font-black uppercase tracking-[0.4em] mb-4 opacity-70">Case Study 01</p>
+          <h2 className="text-4xl lg:text-5xl font-black tracking-tighter mb-6 leading-[1.1]">Multi-Dataset Operations Pipeline</h2>
+          <p className="text-lg font-bold text-indigo-100 opacity-80 leading-relaxed">
+            Trình diễn khả năng của Pig trong việc xử lý luồng dữ liệu phức tạp: Nạp, Gộp, Phân loại và Kết nối đa nguồn chỉ trong một kịch bản duy nhất.
+          </p>
         </div>
-        <Card title="UNION Distribution" subtitle="Program Comparison" icon={Layers} color="text-indigo-600">
-          <div className="h-56 mt-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={unionData}>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'black', fill: '#94a3b8' }} />
-                <Tooltip contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                <Bar dataKey="count" radius={[12, 12, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+        <div className="shrink-0 bg-white/10 backdrop-blur-md rounded-[32px] p-8 border border-white/20 relative z-10 w-full lg:w-auto">
+          <div className="flex items-center gap-4 mb-4">
+            <Activity className="text-emerald-400" size={32} />
+            <span className="text-3xl font-black">100%</span>
           </div>
-        </Card>
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Success Rate on Distributed Host</p>
+        </div>
       </div>
-      <div className="h-full">
-        <CodeTerminal title="demo_01_multidataset.pig" code={code} output={output} />
+
+      <div className="flex flex-col gap-12">
+        {steps.map((step: any, idx: number) => (
+          <div key={idx} className="group relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[48px] blur opacity-0 group-hover:opacity-10 transition duration-1000" />
+            <div className="relative bg-white border border-slate-100 rounded-[48px] p-12 lg:p-16 h-full flex flex-col lg:flex-row gap-12 hover:shadow-2xl transition-all duration-700">
+
+              <div className="lg:w-1/3 space-y-8">
+                <div className="flex items-center gap-4">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl text-white shadow-xl ${step.color === 'indigo' ? 'bg-indigo-600 shadow-indigo-200' :
+                    step.color === 'emerald' ? 'bg-emerald-500 shadow-emerald-200' :
+                      step.color === 'amber' ? 'bg-amber-500 shadow-amber-200' : 'bg-rose-500 shadow-rose-200'
+                    }`}>
+                    0{idx + 1}
+                  </div>
+                  <div>
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{step.title}</h3>
+                    <div className={`h-1 w-8 rounded-full ${step.color === 'indigo' ? 'bg-indigo-400' :
+                      step.color === 'emerald' ? 'bg-emerald-400' :
+                        step.color === 'amber' ? 'bg-amber-400' : 'bg-rose-400'
+                      }`} />
+                  </div>
+                </div>
+
+                <p className="text-slate-900 font-black text-2xl tracking-tighter leading-tight">{step.desc}</p>
+
+                <div className="bg-[#0f172a] rounded-3xl p-8 border border-slate-800 shadow-2xl group/code">
+                  <div className="flex items-center gap-2 mb-4 opacity-40 group-hover/code:opacity-80 transition-opacity">
+                    <Terminal size={14} className="text-indigo-400" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pig Latin Code</span>
+                  </div>
+                  <pre className="text-[12px] font-mono font-bold text-indigo-100 overflow-x-auto whitespace-pre leading-relaxed scrollbar-hide">
+                    {step.code}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="lg:w-2/3 flex flex-col gap-6">
+                <div className="flex items-center gap-3 mb-2 opacity-60">
+                  <Activity size={16} className="text-slate-400" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Execution Result</span>
+                </div>
+
+                {step.multiTables ? (
+                  <div className="space-y-6">
+                    {step.multiTables.map((table: any, tIdx: number) => (
+                      <div key={tIdx} className="bg-slate-50 rounded-[32px] p-8 border border-slate-100 overflow-hidden">
+                        <div className="text-[11px] font-black text-indigo-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <Layers size={12} /> {table.name}
+                        </div>
+                        <div className="overflow-x-auto scrollbar-hide">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="border-b border-slate-200">
+                                {table.headers.map((h: string) => (
+                                  <th key={h} className="pb-4 px-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {table.data.map((row: string[], rIdx: number) => (
+                                <tr key={rIdx} className="group/row hover:bg-white transition-colors">
+                                  {row.map((cell: string, cIdx: number) => (
+                                    <td key={cIdx} className="py-2.5 px-4 text-[11px] font-bold text-slate-600 group-hover/row:text-slate-900 whitespace-nowrap">
+                                      {cell.startsWith('group') ? <Badge type="gender">{cell}</Badge> : cell}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex-1 bg-slate-50 rounded-[32px] p-8 border border-slate-100 overflow-hidden flex flex-col">
+                    {step.tableHeaders ? (
+                      <div className="overflow-x-auto scrollbar-hide">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-200">
+                              {step.tableHeaders.map((h: string) => (
+                                <th key={h} className="pb-4 px-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {step.tableData?.map((row: string[], rIdx: number) => (
+                              <tr key={rIdx} className="group/row hover:bg-white transition-colors">
+                                {row.map((cell: string, cIdx: number) => (
+                                  <td key={cIdx} className="py-3 px-4 text-[12px] font-bold text-slate-600 group-hover/row:text-slate-900 whitespace-nowrap">
+                                    {cell.startsWith('group') ? <Badge type="gender">{cell}</Badge> : cell}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full min-h-[100px]">
+                        <p className="text-lg font-black text-slate-400 uppercase tracking-[0.3em] text-center animate-pulse italic">{step.result}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -213,12 +476,10 @@ full_data = JOIN all_students BY race, schol BY race;`
 
 const Demo02 = () => {
   const gradeData = [
-    { name: 'Xuat Sac', value: 5.2, fill: '#10b981' },
-    { name: 'Gioi', value: 14.6, fill: '#3b82f6' },
-    { name: 'Kha', value: 40.3, fill: '#0ea5e9' },
-    { name: 'Trung Binh', value: 29.6, fill: '#f59e0b' },
-    { name: 'Yeu', value: 10.3, fill: '#ef4444' },
-  ]
+    { name: 'Excellent', value: 30.1, fill: '#8b5cf6' },
+    { name: 'Good', value: 40.3, fill: '#0ea5e9' },
+    { name: 'Average', value: 29.6, fill: '#f59e0b' },
+  ];
 
   const code = `-- 1. REGISTER: Đăng ký UDF Python
 REGISTER 'student_udfs.py' USING jython AS my_udfs;
@@ -235,103 +496,210 @@ graded = FOREACH data GENERATE
     -- Phân loại xếp hạng (UDF 2)
     my_udfs.get_grade(math) AS rank;`
 
-  const output = `[1] DUMP result (Mẫu 2 bản ghi đầu):
-(1,72,72,74,72.67,Kha)
-(2,69,90,88,82.33,Gioi)
+  const pythonCode = `# student_udfs.py
+# Pig Python UDFs
 
-[2] ILLUSTRATE: Phân nhóm xếp loại
-----------------------------------------------------------------------
-| rank       | count |
-----------------------------------------------------------------------
-| Xuat Sac   | 52    |
-| Gioi       | 146   |
-| Kha        | 403   |
-| Trung Binh | 296   |
-| Yeu        | 103   |
-----------------------------------------------------------------------`
+@outputSchema("grade:chararray")
+def get_grade(math):
+    if math is None: return "N/A"
+    try:
+        math = int(math)
+        if math >= 80: return "Excellent"
+        if math >= 60: return "Good"
+        return "Average"
+    except:
+        return "Error"
+
+@outputSchema("avg_score:double")
+def calc_avg(math, reading, writing):
+    try:
+        m = float(math) if math is not None else 0.0
+        r = float(reading) if reading is not None else 0.0
+        w = float(writing) if writing is not None else 0.0
+        return (m + r + w) / 3.0
+    except:
+        return 0.0`;
+
+  const output = `[1] DUMP result (Sample 2 records):
+(0,82,93,93,89.33,Excellent)
+(1,72,72,74,72.67,Good)
+...
+
+[2] ILLUSTRATE: Grade Classification
+-------------------
+| Grade      | Count |
+|------------|-------|
+| Excellent  | 301   |
+| Good       | 403   |
+| Average    | 296   |
+-------------------`
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="space-y-10 flex flex-col">
-        <div className="grid grid-cols-2 gap-6">
-          <MiniSnippet title="Grade UDF" code={`rank = \n  my_udfs.get_grade(math);`} color="emerald" />
-          <MiniSnippet title="Apply Logic" code={`scored = FOREACH data \n  GENERATE \n  rank AS grade;`} color="amber" />
-        </div>
         <Card title="Grade Distribution" subtitle="UDF Classification" icon={Activity} color="text-purple-600">
           <div className="h-64 mt-6">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={gradeData} dataKey="value" innerRadius={70} outerRadius={90} paddingAngle={8} stroke="none">
+                <Pie data={gradeData} dataKey="value" innerRadius={70} outerRadius={90} paddingAngle={12} stroke="none" labelLine={true} label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}>
                   {gradeData.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
                 </Pie>
                 <Tooltip />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'black', fill: '#64748b' }} />
+                <Legend verticalAlign="bottom" height={48} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'black', fill: '#64748b', paddingTop: '10px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </Card>
+        <div className="h-64">
+          <CodeTerminal title="demo_02_udf.pig" code={code} output={output} />
+        </div>
       </div>
-      <div className="h-full">
-        <CodeTerminal title="demo_02_udf.pig" code={code} output={output} />
+      <div className="h-full min-h-[500px]">
+        <CodeTerminal title="student_udfs.py" code={pythonCode} />
       </div>
     </div>
   )
 }
 
 const Demo03 = () => {
-  const code = `-- [LOI 1] DESCRIBE: Schema Mismatch
--- Kiểm tra ID là int hay chararray
-DESCRIBE raw_data;
-
--- [LOI 2] ILLUSTRATE: Logic Edge Case
--- Xem cách Pig xử lý điểm 0
-ILLUSTRATE filtered;
-
--- [LOI 3] FILTER: Boundary Check
--- Sửa lỗi lọc mất học sinh điểm 0
-clean = FILTER raw BY math >= 0;`
-
-  const output = `[LOI 1] Header Collision
-  Total rows read: 1001 (Header + 1000 data)
-  Row 0 values: ['gender', 'race/ethnicity'...]
-
-[LOI 2] Type Casting Disaster
-  Race column mapped to INT...
-  Results: 1000/1000 records are NULL.
-
-[LOI 3] Numerical Boundary Loss
-  math = 0  -> 1 record
-  Filter (math > 0)  -> 999 records (SẮP SAI)
-  Filter (math >= 0) -> 1000 records (CHÍNH XÁC)`
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
-      <div className="space-y-8 flex flex-col">
-        <div className="grid grid-cols-1 gap-6">
-          <MiniSnippet title="Type Fix" code={`-- Correct assignment\nrace: chararray`} color="rose" />
-          <MiniSnippet title="Boundary Fix" code={`-- Correct filter\nFILTER BY math >= 0`} color="amber" />
+    <div className="space-y-16">
+
+      {/* ERROR 1 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
+        <div className="flex flex-col gap-6 h-full justify-between">
+          <CodeTerminal
+            title="01_schema_mismatch.pig"
+            code={`-- [LOI 1] DESCRIBE: Schema Mismatch
+-- Lỗi do khai báo data type: race:int
+DESCRIBE raw_data;`}
+          />
+          <MiniSnippet title="Cách khắc phục" code={`-- Khai báo thành chuỗi ký tự\nrace: chararray`} color="emerald" />
         </div>
-        <Card title="Critical Mistakes" icon={AlertTriangle} color="text-amber-500">
-          <div className="space-y-6 pt-4">
-            {[
-              { t: 'Type Mismatch', c: '100% Data Loss', desc: 'Sử dụng sai kiểu dữ liệu cho cột phân loại.' },
-              { t: 'Header Overflow', c: '+1 Noise Row', desc: 'Dòng tiêu đề bị trình thông dịch coi là dữ liệu.' },
-              { t: 'Boundary Error', c: 'Silent Data Loss', desc: 'Lọc thiếu giá trị biên (ví dụ: điểm 0).' },
-            ].map(item => (
-              <div key={item.t} className="flex items-start gap-4 h-full">
-                <div className="w-2 h-2 rounded-full bg-amber-500 mt-2 shrink-0 animate-pulse" />
-                <div>
-                  <p className="text-xs font-black text-slate-800 uppercase tracking-tight">{item.t} — <span className="text-rose-500">{item.c}</span></p>
-                  <p className="text-[11px] font-bold text-slate-400 mt-1 leading-relaxed">{item.desc}</p>
-                </div>
+        <div className="h-full">
+          <Card title="[1] Schema Verification (Mismatch)" subtitle="DESCRIBE raw_data;" icon={AlertTriangle} color="text-rose-500">
+            <div className="overflow-x-auto mt-4 rounded-xl border border-slate-100 shadow-sm">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="py-3 px-4 font-black tracking-widest uppercase text-[10px] text-slate-400">Field</th>
+                    <th className="py-3 px-4 font-black tracking-widest uppercase text-[10px] text-slate-400">Asserted Type</th>
+                    <th className="py-3 px-4 font-black tracking-widest uppercase text-[10px] text-slate-400">Actual Content</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  <tr className="hover:bg-slate-50 transition-colors group">
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600">gender</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-emerald-600">chararray</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600 border-l border-slate-100">"female"</td>
+                  </tr>
+                  <tr className="bg-rose-50/50 hover:bg-rose-50 transition-colors group">
+                    <td className="py-2 px-4 text-[12px] font-bold text-rose-600 flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />race</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-rose-600 line-through decoration-rose-400 decoration-2">int</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-rose-600 border-l border-rose-100">"group B" (String!)</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50 transition-colors group">
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600">test_prep</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-emerald-600">chararray</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600 border-l border-slate-100">"none"</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* ERROR 2 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
+        <div className="flex flex-col gap-6 h-full justify-between">
+          <CodeTerminal
+            title="02_type_casting.pig"
+            code={`-- [LOI 2] Type Casting Disaster
+-- Cảnh báo: ACCESSING_NON_EXISTENT_FIELD
+DUMP bad_type_sample;`}
+          />
+          <MiniSnippet title="Cách khắc phục" code={`-- Lọc bỏ dòng Tiêu đề (Header) xen lẫn\nraw = FILTER raw_data BY id IS NOT NULL;`} color="emerald" />
+        </div>
+        <div className="h-full">
+          <Card title="[2] Type Casting Disaster" subtitle="DUMP bad_type_sample;" icon={AlertTriangle} color="text-amber-500">
+            <div className="overflow-x-auto mt-4 rounded-xl border border-slate-100 shadow-sm">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="py-3 px-4 font-black tracking-widest uppercase text-[10px] text-slate-400">ID</th>
+                    <th className="py-3 px-4 font-black tracking-widest uppercase text-[10px] text-slate-400">Gender</th>
+                    <th className="py-3 px-4 font-black tracking-widest uppercase text-[10px] text-rose-500">Race (int)</th>
+                    <th className="py-3 px-4 font-black tracking-widest uppercase text-[10px] text-slate-400">Math</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  <tr className="bg-slate-100/50 hover:bg-slate-100 transition-colors group">
+                    <td className="py-2 px-4 text-[12px] font-medium text-slate-400 italic">null</td>
+                    <td className="py-2 px-4 text-[12px] font-medium text-slate-400 italic border-l border-slate-200/50">null</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-rose-500 bg-rose-50 border-l border-slate-200/50">null</td>
+                    <td className="py-2 px-4 text-[12px] font-medium text-slate-400 italic border-l border-slate-200/50">null</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50 transition-colors group">
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600">0</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600 border-l border-slate-100">female</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-rose-500 bg-rose-50 border-l border-slate-100">null</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600 border-l border-slate-100">72</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50 transition-colors group">
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600">1</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600 border-l border-slate-100">female</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-rose-500 bg-rose-50 border-l border-slate-100">null</td>
+                    <td className="py-2 px-4 text-[12px] font-bold text-slate-600 border-l border-slate-100">69</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="bg-amber-50 py-2 border-t border-amber-100 text-center">
+                <span className="text-[10px] uppercase tracking-widest font-black text-amber-600 animate-pulse">... 1000/1000 records corrupted</span>
               </div>
-            ))}
-          </div>
-        </Card>
+            </div>
+          </Card>
+        </div>
       </div>
-      <div className="h-full">
-        <CodeTerminal title="demo_03_troubleshooting.pig" code={code} output={output} />
+
+      {/* ERROR 3 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
+        <div className="flex flex-col gap-6 h-full justify-between">
+          <CodeTerminal
+            title="03_boundary_check.pig"
+            code={`-- [LOI 3] FILTER: Boundary Loss
+-- Lọc các học sinh có điểm toán dương (> 0)
+clean = FILTER raw BY math > 0;`}
+          />
+          <MiniSnippet title="Cách khắc phục" code={`-- Lấy luôn cả điểm 0\nclean = FILTER raw BY math >= 0;`} color="emerald" />
+        </div>
+        <div className="h-full">
+          <Card title="[3] Boundary Loss Check" subtitle="FILTER BY math > 0;" icon={AlertTriangle} color="text-indigo-500">
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50 p-6 shadow-sm h-[calc(100%-1rem)] justify-center">
+              <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                <span className="text-[12px] font-bold text-slate-500">Raw Data (All rows)</span>
+                <span className="text-xl font-black text-indigo-600">1000</span>
+              </div>
+              <div className="flex justify-between items-center bg-rose-50 p-3 rounded-lg border border-rose-200 shadow-sm">
+                <div className="flex flex-col">
+                  <span className="text-[12px] font-black text-rose-600">math &gt; 0</span>
+                  <span className="text-[10px] text-rose-500 font-medium">Wrong Logic</span>
+                </div>
+                <span className="text-xl font-black text-rose-600 line-through decoration-2">998</span>
+              </div>
+              <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-lg border border-emerald-200 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-white/40 to-transparent skew-x-12 translate-x-10 animate-[shimmer_2s_infinite]" />
+                <div className="flex flex-col relative z-20">
+                  <span className="text-[12px] font-black text-emerald-700">math &gt;= 0</span>
+                  <span className="text-[10px] text-emerald-600 font-medium">Correct Logic</span>
+                </div>
+                <span className="text-2xl font-black text-emerald-600 relative z-20">1000</span>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
+
     </div>
   )
 }
@@ -419,12 +787,12 @@ insights = FOREACH grouped GENERATE group, COUNT(processed);`
 [Phase 3] UDF Generation: (id, grade)
 
 [FINAL INSIGHTS DUMP]
-((female,Xuat Sac),34)
-((female,Gioi),82)
-((female,Kha),210)
-((male,Xuat Sac),18)
-((male,Gioi),64)
-((male,Kha),193)
+((female,Excellent),125)
+((male,Excellent),176)
+((female,Good),210)
+((female,Average),183)
+((male,Average),113)
+((male,Good),193)
 
 Pipeline Execution Success.`
 
@@ -462,6 +830,106 @@ Pipeline Execution Success.`
       </div>
       <div className="h-full">
         <CodeTerminal title="demo_05_pipeline.pig" code={code} output={output} />
+      </div>
+    </div>
+  )
+}
+
+const DemoOverview = ({ dataSources }: any) => {
+  const progA = dataSources.program_a || []
+  const progB = dataSources.program_b || []
+  const unionData = [
+    { name: 'A', count: progA.length, fill: '#6366f1' },
+    { name: 'B', count: progB.length, fill: '#8b5cf6' },
+  ]
+
+  const perfData = [
+    { name: 'Normal', time: 27.9, fill: '#ef4444' },
+    { name: 'Optimized', time: 1.4, fill: '#10b981' },
+  ]
+
+  return (
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <Card title="Data Ingestion" subtitle="Multi-Source Union" icon={Layers} color="text-blue-600">
+          <div className="h-40 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={unionData}>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} hide />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-[10px] font-black text-slate-400 mt-4 uppercase tracking-widest text-center">1,000 Records Unified</p>
+        </Card>
+
+        <Card title="Logic Extension" subtitle="UDF Classification" icon={FlaskConical} color="text-purple-600">
+          <div className="flex flex-col justify-center h-full space-y-4 pt-2">
+            <div className="flex justify-between items-center text-[11px] font-bold">
+              <span className="text-slate-400">Avg. Calculator</span>
+              <span className="text-emerald-500">Jython / Python</span>
+            </div>
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-indigo-500 w-[92%]" />
+            </div>
+            <div className="flex justify-between items-center text-[11px] font-bold">
+              <span className="text-slate-400">Grade Mapper</span>
+              <span className="text-indigo-500">Success</span>
+            </div>
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-purple-500 w-[100%]" />
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Performance" subtitle="Replicated Join" icon={Zap} color="text-emerald-600">
+          <div className="h-40 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={perfData} layout="vertical">
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" hide />
+                <Bar dataKey="time" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex justify-between items-center mt-4 border-t border-slate-50 pt-4">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Gain</span>
+            <span className="text-xl font-black text-indigo-600">19x</span>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card title="Troubleshooting Logic" icon={AlertTriangle} color="text-amber-500">
+          <div className="space-y-4 pt-2">
+            {[
+              { t: 'Schema Sync', s: 'Verified', c: 'bg-emerald-500' },
+              { t: 'Type Safety', s: 'Rigorous', c: 'bg-emerald-500' },
+              { t: 'Boundary Check', s: 'Complete', c: 'bg-indigo-500' }
+            ].map(item => (
+              <div key={item.t} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                <span className="text-xs font-black text-slate-600 uppercase tracking-tight">{item.t}</span>
+                <span className={`px-3 py-1 rounded-full text-[9px] font-black text-white uppercase tracking-widest ${item.c}`}>{item.s}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card title="Final Pipeline Insights" subtitle="DUMP Results" icon={PlayCircle} color="text-rose-600">
+          <div className="bg-slate-900 rounded-2xl p-6 h-full font-mono text-[10px] text-emerald-400 space-y-2 overflow-auto max-h-[250px] custom-scrollbar">
+            <p className="text-slate-500 border-b border-slate-800 pb-2 mb-4 uppercase tracking-widest font-black">Cluster Execution Stream</p>
+            <p>((female,Excellent),125)</p>
+            <p>((male,Excellent),176)</p>
+            <p>((female,Good),210)</p>
+            <p>((female,Average),183)</p>
+            <p>((male,Average),113)</p>
+            <p>((male,Good),193)</p>
+            <div className="pt-4 mt-4 border-t border-slate-800 text-indigo-400">
+              <p className="font-bold">STATUS: COMPLETED</p>
+              <p>LATENCY: 13.03ms</p>
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   )
@@ -686,11 +1154,12 @@ export default function App() {
               {/* DEMO DISPLAY */}
               {view.type === 'demo' && (
                 <div className="space-y-24">
-                  {view.id === 'demo1' && <Demo01 dataSources={allDataSources} />}
+                  {view.id === 'demo1' && <Demo01 />}
                   {view.id === 'demo2' && <Demo02 />}
                   {view.id === 'demo3' && <Demo03 />}
                   {view.id === 'demo4' && <Demo04 />}
                   {view.id === 'demo5' && <Demo05 />}
+                  {view.id === 'overview' && <DemoOverview dataSources={allDataSources} />}
                 </div>
               )}
 

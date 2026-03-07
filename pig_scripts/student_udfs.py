@@ -8,10 +8,10 @@ def get_grade(math):
     try:
         math = int(math)
         if math >= 80:
-            return "Xuat Sac"
+            return "Excellent"
         if math >= 60:
-            return "Kha"
-        return "Trung Binh"
+            return "Good"
+        return "Average"
     except:
         return "Error"
 
