@@ -23,6 +23,28 @@ npm install
 npm run dev
 ```
 
+## 🚀 Chạy Apache Pig Thật (Docker)
+
+Để chuyển từ mô phỏng Python sang chạy **Apache Pig Latin thật**:
+
+1. **Khởi động Hadoop/Pig Cluster**:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Chạy Script Pig**:
+   Dùng lệnh sau để thực thi script bên trong container:
+   ```bash
+   docker exec -it pig-lab-engine pig -x local /scripts/demo_01_multidataset.pig
+   ```
+
+3. **Danh sách Script** trong `pig_scripts/`:
+   - `demo_01_multidataset.pig`: Multi-Dataset (UNION/JOIN/SPLIT)
+   - `demo_02_udf.pig`: Extending Pig (Python UDF)
+   - `demo_03_troubleshooting.pig`: Debugging (DESCRIBE/EXPLAIN/ILLUSTRATE)
+   - `demo_04_optimization.pig`: Performance (Filter Early/Replicated Join)
+   - `demo_05_pipeline.pig`: Full Big Data Pipeline
+
 ## Triển khai lên Render
 Dự án được cấu hình để triển khai phần Dashboard (React) lên Render:
 - **Service Type**: Static Site

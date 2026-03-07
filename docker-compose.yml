@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  pig-hadoop:
+    image: vargas-solar/hadoop-pig:latest
+    container_name: pig-lab-engine
+    volumes:
+      - ./pig_scripts:/scripts
+      - ./data:/data
+    environment:
+      - CLUSTER_NAME=pig-lab
+    ports:
+      - "50070:50070"
+      - "8088:8088"
+    stdin_open: true
+    tty: true
+    command: /bin/bash

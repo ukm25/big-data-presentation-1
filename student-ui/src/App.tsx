@@ -153,25 +153,22 @@ const Demo01 = ({ dataSources }: any) => {
     { name: 'Program B', count: progB.length, fill: '#8b5cf6' },
   ]
 
-  const code = `prog_a = pd.read_csv("data/students_program_A.csv")
-prog_b = pd.read_csv("data/students_program_B.csv")
-demo   = pd.read_csv("data/demographics.csv")
-scores = pd.read_csv("data/scores.csv")
-schol  = pd.read_csv("data/scholarships.csv")
+  const code = `-- 1. LOAD: Nạp dữ liệu đa nguồn
+prog_a = LOAD 'data/program_a.csv' USING PigStorage(',');
+prog_b = LOAD 'data/program_b.csv' USING PigStorage(',');
+schol  = LOAD 'data/scholarships.csv' USING PigStorage(',');
 
-# [1] UNION
-all_students = pd.concat([prog_a, prog_b], ignore_index=True)
+-- 2. UNION: Gộp danh sách học sinh
+all_students = UNION prog_a, prog_b;
 
-# [2] SPLIT
-excellent  = all_students[all_students["math"] >= 80]
-good       = all_students[(all_students["math"] >= 60) & (all_students["math"] < 80)]
-needs_help = all_students[all_students["math"] < 60]
+-- 3. SPLIT: Phân nhóm học tập
+SPLIT all_students INTO 
+    excellent  IF math >= 80,
+    good       IF (math >= 60 AND math < 80),
+    needs_help IF math < 60;
 
-# [3] JOIN
-full = demo.merge(scores, on="student_id", how="inner")
-
-# [4] LEFT OUTER JOIN
-left = excellent.merge(schol, on="race", how="left")`
+-- 4. JOIN: Kết hợp với học bổng
+full_data = JOIN all_students BY race, schol BY race;`
 
   const output = `[1] UNION 
   Sau UNION: 1000 dòng học sinh
@@ -208,7 +205,7 @@ left = excellent.merge(schol, on="race", how="left")`
         </Card>
       </div>
       <div className="h-full">
-        <CodeTerminal title="demo_01_multidataset.py" code={code} output={output} />
+        <CodeTerminal title="demo_01_multidataset.pig" code={code} output={output} />
       </div>
     </div>
   )
@@ -223,24 +220,20 @@ const Demo02 = () => {
     { name: 'Yeu', value: 10.3, fill: '#ef4444' },
   ]
 
-  const code = `def calc_avg(math, reading, writing):
-    return round((math + reading + writing) / 3.0, 2)
+  const code = `-- 1. REGISTER: Đăng ký UDF Python
+REGISTER 'student_udfs.py' USING jython AS my_udfs;
 
-def get_grade(avg):
-    if avg >= 90: return "Xuat Sac"
-    if avg >= 80: return "Gioi"
-    if avg >= 65: return "Kha"
-    if avg >= 50: return "Trung Binh"
-    return "Yeu"
+-- 2. LOAD & DEFINE
+data = LOAD 'data/students_all.csv' AS (...);
 
-def find_strength(math, reading, writing):
-    verbal = (reading + writing) / 2.0
-    if math - verbal > 10: return "Strong in Math"
-    if verbal - math > 10: return "Strong in Reading/Writing"
-    return "Balanced"
-
-df["avg_score"] = df.apply(lambda r: calc_avg(r["math"], r["reading"], r["writing"]), axis=1)
-df["grade"]     = df["avg_score"].apply(get_grade)`
+-- 3. Triệu hồi UDF trong FOREACH
+graded = FOREACH data GENERATE 
+    id, 
+    math,
+    -- Tính điểm trung bình (UDF 1)
+    my_udfs.calc_avg(math, reading, writing) AS avg,
+    -- Phân loại xếp hạng (UDF 2)
+    my_udfs.get_grade(math) AS rank;`
 
   const output = `[1] Mẫu kết quả định danh (8 học sinh đầu):
  student_id  math  reading  writing  avg_score    grade
@@ -281,24 +274,24 @@ df["grade"]     = df["avg_score"].apply(get_grade)`
         </Card>
       </div>
       <div className="h-full">
-        <CodeTerminal title="demo_02_udf.py" code={code} output={output} />
+        <CodeTerminal title="demo_02_udf.pig" code={code} output={output} />
       </div>
     </div>
   )
 }
 
 const Demo03 = () => {
-  const code = `# LOI 1: Không Skip Header
-raw = pd.read_csv("StudentsPerformance.csv")
-# Output: len=1001 (Dòng 0 là 'gender','race'...)
+  const code = `-- [LOI 1] DESCRIBE: Schema Mismatch
+-- Kiểm tra ID là int hay chararray
+DESCRIBE raw_data;
 
-# LOI 2: Sai kiểu dữ liệu (race:int)
-# File thực tế: 'group A', 'group B'
-# Nếu load as INT -> NaN 100%
+-- [LOI 2] ILLUSTRATE: Logic Edge Case
+-- Xem cách Pig xử lý điểm 0
+ILLUSTRATE filtered;
 
-# LOI 3: Lỗi logic biên (math > 0)
-# Dataset có 1 học sinh điểm 0
-# Filter > 0 làm mất dữ liệu học sinh này!`
+-- [LOI 3] FILTER: Boundary Check
+-- Sửa lỗi lọc mất học sinh điểm 0
+clean = FILTER raw BY math >= 0;`
 
   const output = `[LOI 1] Header Collision
   Total rows read: 1001 (Header + 1000 data)
@@ -339,7 +332,7 @@ raw = pd.read_csv("StudentsPerformance.csv")
         </Card>
       </div>
       <div className="h-full">
-        <CodeTerminal title="demo_03_troubleshooting.py" code={code} output={output} />
+        <CodeTerminal title="demo_03_troubleshooting.pig" code={code} output={output} />
       </div>
     </div>
   )
@@ -351,13 +344,13 @@ const Demo04 = () => {
     { name: 'Replicated', time: 1.4, fill: '#10b981' },
   ]
 
-  const code = `# KT1: FILTER sớm (Column Pruning)
-# Chỉ nạp 2 cột cần thiết Math + Reading
-pruned = data[["math", "reading"]]
+  const code = `-- [KT 1] Filter Early & Column Pruning
+-- Chỉ lấy ID và Math, lọc ngay từ đầu
+pruned = FOREACH (FILTER data BY math >= 50) GENERATE id, math;
 
-# KT2: Replicated JOIN (Map-Side Join)
-# Tải bảng nhỏ (scholarships - 3 dòng) vào RAM
-replicated_join = large_data.merge(small_lookup, on="race")`
+-- [KT 2] Replicated JOIN (Map-side)
+-- Ép bảng nhỏ vào RAM của nốt
+joined = JOIN pruned BY race, schol BY race USING 'replicated';`
 
   const output = `Dataset Simulation: 500,000 records
 
@@ -405,25 +398,23 @@ replicated_join = large_data.merge(small_lookup, on="race")`
         </Card>
       </div>
       <div className="h-full">
-        <CodeTerminal title="demo_04_optimization.py" code={code} output={output} />
+        <CodeTerminal title="demo_04_optimization.pig" code={code} output={output} />
       </div>
     </div>
   )
 }
 
 const Demo05 = () => {
-  const code = `# 1. UNION (Program A + B)
-all_stu = pd.concat([prog_a, prog_b])
+  const code = `-- PHÁC THẢO PIPELINE TỔNG THỂ
+enriched = JOIN (UNION prog_a, prog_b) BY race, schol BY race;
 
-# 2. JOIN (Lookup Scholarship)
-enriched = all_stu.merge(schol, on="race", how="left")
+-- Áp dụng logic nghiệp vụ (UDF)
+processed = FOREACH enriched GENERATE 
+    id, my_udfs.get_grade(math) AS rank;
 
-# 3. UDF (Grade & Average)
-enriched["avg"] = (e["m"] + e["r"] + e["w"]) / 3
-enriched["grade"] = enriched["avg"].apply(get_grade)
-
-# 4. SPLIT (Top Students)
-top_performers = enriched[enriched["math"] >= 80]`
+-- Thống kê (Aggregation)
+grouped = GROUP processed BY rank;
+insights = FOREACH grouped GENERATE group, COUNT(processed);`
 
   const output = `[Phase 1] UNION Success (358 + 642 -> 1000)
 [Phase 2] JOIN Excellent -> Scholarships Matched!
@@ -470,7 +461,7 @@ Pipeline Execution Time: 13.03 ms`
         </Card>
       </div>
       <div className="h-full">
-        <CodeTerminal title="demo_05_pipeline.py" code={code} output={output} />
+        <CodeTerminal title="demo_05_pipeline.pig" code={code} output={output} />
       </div>
     </div>
   )
