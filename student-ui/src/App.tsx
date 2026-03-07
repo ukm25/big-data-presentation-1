@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts'
 import {
   Database, FlaskConical, AlertTriangle, Zap, PlayCircle,
-  Search, ChevronLeft, ChevronRight, Filter,
-  TrendingUp, Layers, Code, Terminal, Award, Users, BookOpen, Clock, Activity, Target
+  Search, ChevronLeft, ChevronRight,
+  Layers, Terminal, Users, Activity, Target
 } from 'lucide-react'
 
 // ─── Types & Constants ──────────────────────────────────
@@ -33,13 +33,6 @@ const DEMOS = [
 
 const PAGE_SIZES = [10, 20, 50]
 
-const GRADE_COLORS: any = {
-  'Xuat Sac': '#10b981', // Emerald
-  'Gioi': '#3b82f6', // Blue
-  'Kha': '#0ea5e9', // Sky
-  'Trung Binh': '#f59e0b', // Amber
-  'Yeu': '#ef4444', // Red
-}
 
 // ─── Helper Components ────────────────────────────────────
 
@@ -221,7 +214,7 @@ left = excellent.merge(schol, on="race", how="left")`
   )
 }
 
-const Demo02 = ({ students }: any) => {
+const Demo02 = () => {
   const gradeData = [
     { name: 'Xuat Sac', value: 5.2, fill: '#10b981' },
     { name: 'Gioi', value: 14.6, fill: '#3b82f6' },
@@ -562,8 +555,8 @@ export default function App() {
                   key={d.id}
                   onClick={() => handleNav('demo', d.id)}
                   className={`w-full flex items-center gap-4 px-5 py-4 rounded-[24px] transition-all duration-500 group ${view.type === 'demo' && view.id === d.id
-                      ? 'bg-indigo-600 text-white shadow-2xl shadow-indigo-200 scale-[1.05] -translate-y-1'
-                      : 'text-slate-500 hover:bg-slate-50 hover:translate-x-1'
+                    ? 'bg-indigo-600 text-white shadow-2xl shadow-indigo-200 scale-[1.05] -translate-y-1'
+                    : 'text-slate-500 hover:bg-slate-50 hover:translate-x-1'
                     }`}
                 >
                   <d.icon size={20} className={view.type === 'demo' && view.id === d.id ? 'text-white' : d.color} />
@@ -581,8 +574,8 @@ export default function App() {
                   key={s.id}
                   onClick={() => handleNav('table', s.id)}
                   className={`w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 ${view.type === 'table' && view.id === s.id
-                      ? 'bg-slate-900 text-white shadow-xl'
-                      : 'text-slate-500 hover:bg-slate-50'
+                    ? 'bg-slate-900 text-white shadow-xl'
+                    : 'text-slate-500 hover:bg-slate-50'
                     }`}
                 >
                   <div className={`w-2.5 h-2.5 rounded-full ${s.color} ${view.id === s.id && view.type === 'table' ? 'ring-4 ring-white/20' : 'opacity-30'}`} />
@@ -676,7 +669,7 @@ export default function App() {
               {view.type === 'demo' && (
                 <div className="space-y-24">
                   {view.id === 'demo1' && <Demo01 dataSources={allDataSources} />}
-                  {view.id === 'demo2' && <Demo02 students={allDataSources['all']} />}
+                  {view.id === 'demo2' && <Demo02 />}
                   {view.id === 'demo3' && <Demo03 />}
                   {view.id === 'demo4' && <Demo04 />}
                   {view.id === 'demo5' && <Demo05 />}
@@ -761,8 +754,8 @@ export default function App() {
                               key={p}
                               onClick={() => setPage(p)}
                               className={`w-16 h-16 text-[15px] font-black rounded-[28px] transition-all border-2 ${page === p
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xl shadow-indigo-200 scale-125 z-10 rotate-6'
-                                  : 'bg-white text-slate-400 border-slate-100 hover:border-indigo-300'
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xl shadow-indigo-200 scale-125 z-10 rotate-6'
+                                : 'bg-white text-slate-400 border-slate-100 hover:border-indigo-300'
                                 }`}
                             >
                               {p}
