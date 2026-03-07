@@ -6,7 +6,7 @@
 */
 
 -- 1. LOAD dữ liệu lớn (Big Table)
-large_data = LOAD '/data/students_all.csv' USING PigStorage(',') 
+large_data = LOAD '/data/StudentsPerformance.csv' USING PigStorage(',') 
     AS (id:int, gender:chararray, race:chararray, parent_edu:chararray, lunch:chararray, test_prep:chararray, math:int, reading:int, writing:int);
 
 -- 2. LOAD dữ liệu nhỏ (Small Lookup Table)

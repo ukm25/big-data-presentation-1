@@ -6,7 +6,7 @@
 */
 
 -- 1. LOAD dữ liệu thô
-raw_data = LOAD '/data/students_all.csv' USING PigStorage(',') 
+raw_data = LOAD '/data/StudentsPerformance.csv' USING PigStorage(',') 
     AS (id:int, gender:chararray, race:chararray, parent_edu:chararray, lunch:chararray, test_prep:chararray, math:int, reading:int, writing:int);
 
 -- [DEBUG 1] DESCRIBE: Kiểm tra kiểu dữ liệu của các cột (Schema)

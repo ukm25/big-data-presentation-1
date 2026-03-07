@@ -189,8 +189,8 @@ full_data = JOIN all_students BY race, schol BY race;`
     <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="space-y-10 flex flex-col">
         <div className="grid grid-cols-2 gap-6">
-          <MiniSnippet title="Join Logic" code={`full = demo.merge(\n  scores, \n  on="student_id"\n)`} color="indigo" />
-          <MiniSnippet title="Union Logic" code={`pd.concat([\n  prog_a, \n  prog_b\n])`} color="emerald" />
+          <MiniSnippet title="Join Logic" code={`full = JOIN demo BY id,\n  scores BY student_id;`} color="indigo" />
+          <MiniSnippet title="Union Logic" code={`all_students = \n  UNION prog_a, prog_b;`} color="emerald" />
         </div>
         <Card title="UNION Distribution" subtitle="Program Comparison" icon={Layers} color="text-indigo-600">
           <div className="h-56 mt-6">
@@ -235,29 +235,27 @@ graded = FOREACH data GENERATE
     -- Phân loại xếp hạng (UDF 2)
     my_udfs.get_grade(math) AS rank;`
 
-  const output = `[1] Mẫu kết quả định danh (8 học sinh đầu):
- student_id  math  reading  writing  avg_score    grade
-          1    72       72       74      72.67      Kha
-          2    69       90       88      82.33     Gioi
+  const output = `[1] DUMP result (Mẫu 2 bản ghi đầu):
+(1,72,72,74,72.67,Kha)
+(2,69,90,88,82.33,Gioi)
 
-[2] Thống kê xếp loại:
-  Xuat Sac    :   52 ( 5.2%) 
-  Gioi        :  146 (14.6%) 
-  Kha         :  403 (40.3%) 
-  Trung Binh  :  296 (29.6%) 
-  Yeu         :  103 (10.3%) 
-
-[3] Năng khiếu:
-  Balanced                  : 703 em
-  Strong in Reading/Writing : 211 em
-  Strong in Math            : 86 em`
+[2] ILLUSTRATE: Phân nhóm xếp loại
+----------------------------------------------------------------------
+| rank       | count |
+----------------------------------------------------------------------
+| Xuat Sac   | 52    |
+| Gioi       | 146   |
+| Kha        | 403   |
+| Trung Binh | 296   |
+| Yeu        | 103   |
+----------------------------------------------------------------------`
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="space-y-10 flex flex-col">
         <div className="grid grid-cols-2 gap-6">
-          <MiniSnippet title="Grade UDF" code={`if avg >= 90: \n  return "Xuat Sac"\nif avg >= 80: \n  return "Gioi"`} color="emerald" />
-          <MiniSnippet title="Apply Logic" code={`df["grade"] = \ndf["avg"].apply(\n  get_grade\n)`} color="amber" />
+          <MiniSnippet title="Grade UDF" code={`rank = \n  my_udfs.get_grade(math);`} color="emerald" />
+          <MiniSnippet title="Apply Logic" code={`scored = FOREACH data \n  GENERATE \n  rank AS grade;`} color="amber" />
         </div>
         <Card title="Grade Distribution" subtitle="UDF Classification" icon={Activity} color="text-purple-600">
           <div className="h-64 mt-6">
@@ -310,8 +308,8 @@ clean = FILTER raw BY math >= 0;`
     <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="space-y-8 flex flex-col">
         <div className="grid grid-cols-1 gap-6">
-          <MiniSnippet title="Type Fix" code={`# Correct assignment\nrace: chararray`} color="rose" />
-          <MiniSnippet title="Boundary Fix" code={`# correct filter\nFILTER BY math >= 0`} color="amber" />
+          <MiniSnippet title="Type Fix" code={`-- Correct assignment\nrace: chararray`} color="rose" />
+          <MiniSnippet title="Boundary Fix" code={`-- Correct filter\nFILTER BY math >= 0`} color="amber" />
         </div>
         <Card title="Critical Mistakes" icon={AlertTriangle} color="text-amber-500">
           <div className="space-y-6 pt-4">
@@ -416,24 +414,26 @@ processed = FOREACH enriched GENERATE
 grouped = GROUP processed BY rank;
 insights = FOREACH grouped GENERATE group, COUNT(processed);`
 
-  const output = `[Phase 1] UNION Success (358 + 642 -> 1000)
-[Phase 2] JOIN Excellent -> Scholarships Matched!
-[Phase 3] UDF Generation (1000 records processed)
+  const output = `[Phase 1] UNION Success: 1000 records
+[Phase 2] JOIN Success: (race, student_info, scholarship_info)
+[Phase 3] UDF Generation: (id, grade)
 
-[FINAL ANALYTICS REPORT]
-        count  avg_math  scholarship_count
-gender                                    
-female    118     82.88                 61
-male       80     88.46                 40
+[FINAL INSIGHTS DUMP]
+((female,Xuat Sac),34)
+((female,Gioi),82)
+((female,Kha),210)
+((male,Xuat Sac),18)
+((male,Gioi),64)
+((male,Kha),193)
 
-Pipeline Execution Time: 13.03 ms`
+Pipeline Execution Success.`
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-stretch">
       <div className="flex flex-col space-y-10">
         <div className="grid grid-cols-2 gap-6">
-          <MiniSnippet title="Pipeline" code={`STAGE_1 -> \nSTAGE_2 -> \nSTAGE_3 -> \nSTAGE_4`} color="rose" />
-          <MiniSnippet title="Target" code={`gender.groupby()\n.agg({\n  'math': 'mean'\n})`} color="indigo" />
+          <MiniSnippet title="Pipeline" code={`STAGE_1 (LOAD) -> \nSTAGE_2 (JOIN/UDF) -> \nSTAGE_3 (GROUP) -> \nSTAGE_4 (STORE)`} color="rose" />
+          <MiniSnippet title="Target" code={`GROUP processed BY rank;\ninsights = FOREACH grouped\n  GENERATE group,\n  COUNT(processed);`} color="indigo" />
         </div>
         <Card title="E2E Pipeline Visualization" icon={PlayCircle} color="text-rose-500">
           <div className="w-full bg-[#1e293b] rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl h-full flex flex-col justify-center">

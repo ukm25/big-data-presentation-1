@@ -6,10 +6,10 @@
 */
 
 -- 1. LOAD: Nạp dữ liệu từ 3 nguồn khác nhau
-prog_a = LOAD '/data/students_prog_a.csv' USING PigStorage(',') 
+prog_a = LOAD '/data/students_program_A.csv' USING PigStorage(',') 
     AS (id:int, gender:chararray, race:chararray, parent_edu:chararray, lunch:chararray, test_prep:chararray, math:int, reading:int, writing:int);
 
-prog_b = LOAD '/data/students_prog_b.csv' USING PigStorage(',') 
+prog_b = LOAD '/data/students_program_B.csv' USING PigStorage(',') 
     AS (id:int, gender:chararray, race:chararray, parent_edu:chararray, lunch:chararray, test_prep:chararray, math:int, reading:int, writing:int);
 
 schol = LOAD '/data/scholarships.csv' USING PigStorage(',') 
