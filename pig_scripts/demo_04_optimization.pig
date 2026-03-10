@@ -6,25 +6,26 @@
 */
 
 -- 1. LOAD dữ liệu lớn (Big Table)
+-- Lưu ý: StudentsPerformance.csv có dấu ngoặc kép, scholarships.csv thì không.
 large_data = LOAD '/data/StudentsPerformance.csv' USING PigStorage(',') 
-    AS (id:int, gender:chararray, race:chararray, parent_edu:chararray, lunch:chararray, test_prep:chararray, math:int, reading:int, writing:int);
+    AS (gender:chararray, race:chararray, parent_edu:chararray, lunch:chararray, test_prep:chararray, math:chararray, reading:chararray, writing:chararray);
 
 -- 2. LOAD dữ liệu nhỏ (Small Lookup Table)
 small_schol = LOAD '/data/scholarships.csv' USING PigStorage(',') 
     AS (race:chararray, schol_name:chararray, amount:int);
 
--- [TỐI ƯU 1] FILTER EARLY: Loại bỏ những dòng không đạt ngay lập tức
--- Giảm số lượng bản ghi cần xử lý trong các bước JOIN tiếp theo.
-filtered = FILTER large_data BY math >= 50;
+-- [TỐI ƯU 1 & 2] FILTER sớm và gọt dũa dữ liệu (Xóa ngoặc kép)
+-- Ta phải xóa ngoặc kép ở cột 'race' thì mới JOIN khớp được với bảng học bổng.
+pruned = FOREACH (FILTER large_data BY gender != '"gender"') GENERATE 
+    REPLACE(race, '"', '') AS race, 
+    (int)REPLACE(math, '"', '') AS math;
 
--- [TỐI ƯU 2] COLUMN PRUNING: Chỉ giữ lại các cột cần thiết (ID, Race, Math)
--- Giảm kích thước bản ghi trên ổ đĩa và mạng (IO/Bandwidth).
-pruned = FOREACH filtered GENERATE id, race, math;
+-- Lọc những người có điểm >= 50
+filtered = FILTER pruned BY math >= 50;
 
 -- [TỐI ƯU 3] REPLICATED JOIN: Map-side Join
--- Pig sẽ nạp bảng nhỏ (small_schol) vào RAM của từng Task, 
--- giúp JOIN diễn ra ngay trong bộ nhớ, không cần Shuffle qua mạng.
-optimized_join = JOIN pruned BY race, small_schol BY race USING 'replicated';
+-- Dùng 'replicated' vì bảng small_schol rất nhỏ, nạp vào RAM chạy nhanh hơn.
+optimized_join = JOIN filtered BY race, small_schol BY race USING 'replicated';
 
 -- 3. Xuất kết quả
 DUMP optimized_join;
